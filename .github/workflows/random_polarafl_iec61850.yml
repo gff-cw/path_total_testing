@@ -1,4 +1,4 @@
-name: SRAG-polarafl-iec61850
+name: random-polarafl-iec61850
 run-name: polarafl iec61850 fuzzing [${{ inputs.run_segment }}/${{ inputs.max_segments }}] on ${{ inputs.target_branch }}
 
 on:
