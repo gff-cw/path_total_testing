@@ -102,7 +102,7 @@ jobs:
             -o outputs \
             -S out_s0 \
             -m none \
-            -- ./opener_afl >/dev/null 2>&1 &
+            -- ./opener_afl >/dev/null &
           pids+=($!)
 
           sleep 2
@@ -113,7 +113,7 @@ jobs:
               -o outputs \
               -S "out_s${i}" \
               -m none \
-              -- ./opener_afl >/dev/null 2>&1 &
+              -- ./opener_afl &
             pids+=($!)
           done
 
