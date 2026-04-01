@@ -71,6 +71,13 @@ jobs:
           test -d outputs/out_s0/queue
           echo "Resumed AFL output from run ${{ inputs.resume_run_id }} / artifact ${{ inputs.resume_artifact_name }}"
 
+      - name: Prepare runner for crash detection
+        shell: bash
+        run: |
+          echo "Before: $(cat /proc/sys/kernel/core_pattern)"
+          sudo sysctl -w kernel.core_pattern=core
+          echo "After:  $(cat /proc/sys/kernel/core_pattern)"
+
       - name: Run AFL fuzzing with 4 secondary instances
         shell: bash
         run: |
