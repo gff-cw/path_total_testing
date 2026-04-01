@@ -102,7 +102,7 @@ jobs:
             -o outputs \
             -S out_s0 \
             -m none \
-            -- ./iec61850_polar @@ >/dev/null 2>&1 &
+            -- ./iec61850_polar @@ &
           pids+=($!)
 
           sleep 2
@@ -113,7 +113,7 @@ jobs:
               -o outputs \
               -S "out_s${i}" \
               -m none \
-              -- ./iec61850_polar @@ >/dev/null 2>&1 &
+              -- ./iec61850_polar @@ &
             pids+=($!)
           done
 
