@@ -154,7 +154,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          cd Polar
+          cd AFL
           if [ -d outputs ]; then
             tar -czf iec61850-findings.tar.gz outputs
           else
