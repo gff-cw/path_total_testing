@@ -149,7 +149,7 @@ jobs:
             -m none \
             -x "${DICT_FILE}"\
             -p fast \
-            -- "./${TARGET_BIN} lo" @@
+            -- "./${TARGET_BIN} " lo @@
           rc=$?
           set -e
 
