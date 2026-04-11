@@ -143,13 +143,7 @@ jobs:
           fi
 
           set +e
-          timeout "${FUZZ_SECONDS}" "../${FUZZER_DIR}/${FUZZER_BIN}" \
-            "${input_args[@]}" \
-            -o "${OUTPUT_DIR}" \
-            -m none \
-            -x "${DICT_FILE}" \
-            -p fast
-            -- "./${TARGET_BIN}" @@
+          timeout "${FUZZ_SECONDS}" "../${FUZZER_DIR}/${FUZZER_BIN}" "${input_args[@]}"  -o "${OUTPUT_DIR}" -m none -x "${DICT_FILE}" -p fast -- "./${TARGET_BIN}" @@
           rc=$?
           set -e
 
