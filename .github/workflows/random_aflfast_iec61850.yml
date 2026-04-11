@@ -148,13 +148,7 @@ jobs:
           fi
 
           set +e
-          LD_PRELOAD="$PWD/x86_64-linux-gnu/desock.so" timeout "${FUZZ_SECONDS}" "../${FUZZER_DIR}/${FUZZER_BIN}" \
-            "${input_args[@]}" \
-            -o "${OUTPUT_DIR}" \
-            -m none \
-            -x "${DICT_FILE}" \
-            -p fast \
-            -- "./${TARGET_BIN}" @@
+            LD_PRELOAD="${GITHUB_WORKSPACE}/preeny/x86_64-linux-gnu/desock.so" timeout "${FUZZ_SECONDS}" "../${FUZZER_DIR}/${FUZZER_BIN}" "${input_args[@]}"  -o "${OUTPUT_DIR}" -m none -x "${DICT_FILE}"  -p fast -- "./${TARGET_BIN}" @@
           rc=$?
           set -e
 
