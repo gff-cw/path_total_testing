@@ -49,7 +49,7 @@ env:
 
   # ===== 目标目录 / 目标可执行文件 / 字典 =====
   # 默认示例：opener + afl
-  TARGET_DIR: opener_afl
+  TARGET_DIR: opener_polar
   TARGET_BIN: opener
   DICT_FILE: opener.dict
 
