@@ -1,5 +1,5 @@
 name: random-aflfast-opener
-run-name: AFLFast opener fuzzing [${{ inputs.run_segment }}/${{ inputs.max_segments }}] on ${{ inputs.target_branch }}
+run-name: random opener fuzzing [${{ inputs.run_segment }}/${{ inputs.max_segments }}] on ${{ inputs.target_branch }}
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ on:
         default: '8'
         type: string
       resume_run_id:
-        description: 'Previous workflow run ID used for AFL resume'
+        description: 'Previous workflow run ID used for resume'
         required: false
         default: ''
         type: string
@@ -34,6 +34,43 @@ permissions:
   contents: read
   actions: write
 
+env:
+  # ===== 基本标识 =====
+  PROTOCOL_NAME: opener
+  TOOL_NAME: aflfast
+
+  # ===== AFL系列工具路径 =====
+  # AFL      -> afl
+  # AFLFast  -> aflfast
+  # MOpt     -> mopt
+  # PolarAFL -> polar
+  FUZZER_DIR: aflfast
+  FUZZER_BIN: afl-fuzz
+
+  # ===== 目标目录 / 目标可执行文件 / 字典 =====
+  # 默认示例：opener + afl
+  TARGET_DIR: opener_afl
+  TARGET_BIN: opener
+  DICT_FILE: opener.dict
+
+  # ===== 初始种子目录（相对仓库根目录） =====
+  SEED_DIR: random/opener
+
+  # ===== 输出 / 归档 =====
+  OUTPUT_DIR: outputs
+  RESULTS_ARCHIVE: opener-findings.tar.gz
+  ARTIFACT_PREFIX: opener-findings
+
+  # ===== 当前workflow文件名（供链式触发下一段） =====
+  SELF_WORKFLOW_FILE: random_aflfast_opener.yml
+
+  # ===== 运行时长（秒） =====
+  FUZZ_SECONDS: "21300"
+
+  # ===== 额外运行库；默认 bacnet + afl 不需要 =====
+  # 例如 PolarAFL 可改成: libcjson1
+  EXTRA_APT_PACKAGES: ""
+
 jobs:
   fuzzing:
     runs-on: ubuntu-24.04
@@ -46,13 +83,20 @@ jobs:
           ref: ${{ inputs.target_branch }}
 
       - name: Install runtime libraries for target
+        shell: bash
         run: |
+          set -e
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            python3.12 \
-            libpython3.12t64 \
-            libstdc++6 \
-            libgcc-s1
+
+          packages=(libstdc++6 libgcc-s1)
+
+          if [ -n "${EXTRA_APT_PACKAGES}" ]; then
+            # shellcheck disable=SC2206
+            extra_packages=(${EXTRA_APT_PACKAGES})
+            packages+=("${extra_packages[@]}")
+          fi
+
+          sudo apt-get install -y --no-install-recommends "${packages[@]}"
           sudo ldconfig
 
       - name: Restore AFL state from previous segment
@@ -61,114 +105,91 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          cd AFLfast
-          rm -rf outputs
+          set -e
+          rm -rf "${TARGET_DIR:?}/${OUTPUT_DIR}"
           mkdir -p /tmp/afl-resume
+
           gh run download "${{ inputs.resume_run_id }}" \
             -n "${{ inputs.resume_artifact_name }}" \
             -D /tmp/afl-resume
-          tar -xzf /tmp/afl-resume/opener-findings.tar.gz
-          test -d outputs/out_s0/queue
+
+          tar -xzf "/tmp/afl-resume/${RESULTS_ARCHIVE}" -C "${TARGET_DIR}"
+          test -d "${TARGET_DIR}/${OUTPUT_DIR}/queue"
+
           echo "Resumed AFL output from run ${{ inputs.resume_run_id }} / artifact ${{ inputs.resume_artifact_name }}"
 
       - name: Prepare runner for crash detection
         shell: bash
         run: |
+          set -e
           echo "Before: $(cat /proc/sys/kernel/core_pattern)"
           sudo sysctl -w kernel.core_pattern=core
           echo "After:  $(cat /proc/sys/kernel/core_pattern)"
 
-      - name: Run AFL fuzzing with 4 secondary instances
+      - name: Run single AFL instance
         shell: bash
         run: |
-          cd AFLfast
-          chmod +x ./opener_aflfast ./afl-fuzz
+          cd "${TARGET_DIR}"
 
-          if [ -d outputs/out_s0/queue ]; then
+          chmod +x "./${TARGET_BIN}" "../${FUZZER_DIR}/${FUZZER_BIN}"
+
+          if [ -d "${OUTPUT_DIR}/queue" ]; then
             input_args=(-i-)
             echo "Resume mode: use existing outputs"
           else
-            rm -rf outputs
-            input_args=(-i ../random/opener)
-            echo "Fresh mode: use inputs/ as initial corpus"
+            rm -rf "${OUTPUT_DIR}"
+            input_args=(-i "../${SEED_DIR}")
+            echo "Fresh mode: use ${SEED_DIR} as initial corpus"
           fi
 
-          pids=()
-
           set +e
-
-          timeout 21300 ./afl-fuzz \
+          timeout "${FUZZ_SECONDS}" "../${FUZZER_DIR}/${FUZZER_BIN}" \
             "${input_args[@]}" \
-            -o outputs \
-            -S out_s0 \
+            -o "${OUTPUT_DIR}" \
             -m none \
+            -x "${DICT_FILE}"\
             -p fast \
-            -- ./opener_aflfast >/dev/null 2>&1 &
-          pids+=($!)
-
-          sleep 2
-
-          for i in 1 2 3; do
-            timeout 21300 ./afl-fuzz \
-              "${input_args[@]}" \
-              -o outputs \
-              -S "out_s${i}" \
-              -m none \
-              -p fast \
-              -- ./opener_aflfast >/dev/null 2>&1 &
-            pids+=($!)
-          done
-
-          rc=0
-          for pid in "${pids[@]}"; do
-            wait "$pid"
-            one_rc=$?
-            echo "worker pid=$pid exit code=$one_rc"
-            if [ "$one_rc" -ne 0 ] && [ "$one_rc" -ne 124 ]; then
-              rc="$one_rc"
-            fi
-          done
-
+            -- "./${TARGET_BIN} lo" @@
+          rc=$?
           set -e
-          exit "$rc"
 
-      - name: Print final fuzzer_stats for all workers
+          echo "afl-fuzz exit code=${rc}"
+
+          # timeout 返回 124 视为正常结束
+          if [ "${rc}" -ne 0 ] && [ "${rc}" -ne 124 ]; then
+            exit "${rc}"
+          fi
+
+      - name: Print final fuzzer_stats
         if: always()
         shell: bash
         run: |
-          cd AFLfast
-          echo "===== final fuzzer_stats for all workers ====="
-          found=0
-          shopt -s nullglob
-          for stats in outputs/out_*/fuzzer_stats; do
-            found=1
-            worker_dir="$(dirname "$stats")"
-            worker_name="$(basename "$worker_dir")"
-            echo "===== ${worker_name} ====="
-            cat "$stats"
-            echo
-          done
-          if [ "$found" -eq 0 ]; then
-            echo "No outputs/out_*/fuzzer_stats found"
+          cd "${TARGET_DIR}"
+          echo "===== final fuzzer_stats ====="
+
+          if [ -f "${OUTPUT_DIR}/fuzzer_stats" ]; then
+            cat "${OUTPUT_DIR}/fuzzer_stats"
+          else
+            echo "No ${OUTPUT_DIR}/fuzzer_stats found"
           fi
 
       - name: Pack fuzzing results
         if: always()
         shell: bash
         run: |
-          cd AFLfast
-          if [ -d outputs ]; then
-            tar -czf opener-findings.tar.gz outputs
+          set -e
+          if [ -d "${TARGET_DIR}/${OUTPUT_DIR}" ]; then
+            tar -czf "${RESULTS_ARCHIVE}" -C "${TARGET_DIR}" "${OUTPUT_DIR}"
           else
-            echo "outputs not found, skip packing"
+            echo "${TARGET_DIR}/${OUTPUT_DIR} not found, skip packing"
           fi
 
       - name: Upload fuzzing results archive
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: opener-findings-seg-${{ inputs.run_segment }}
-          path: AFLfast/opener-findings.tar.gz
+          name: ${{ env.ARTIFACT_PREFIX }}-seg-${{ inputs.run_segment }}
+          path: ${{ env.RESULTS_ARCHIVE }}
           if-no-files-found: warn
 
       - name: Trigger next fuzzing segment
@@ -177,18 +198,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
+          set -e
           next_segment=$(( ${{ inputs.run_segment }} + 1 ))
-          current_artifact="opener-findings-seg-${{ inputs.run_segment }}"
+          current_artifact="${ARTIFACT_PREFIX}-seg-${{ inputs.run_segment }}"
 
           curl -fsSL \
             -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/random_aflfast_opener.yml/dispatches" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/${SELF_WORKFLOW_FILE}/dispatches" \
             -d @- <<EOF
           {
-            "ref": "main",
+            "ref": "${{ inputs.target_branch }}",
             "inputs": {
               "target_branch": "${{ inputs.target_branch }}",
               "run_segment": "${next_segment}",

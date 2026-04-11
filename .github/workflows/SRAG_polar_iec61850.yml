@@ -1,5 +1,5 @@
-name: SRAG-polar-bacnet
-run-name: SRAG bacnet fuzzing [${{ inputs.run_segment }}/${{ inputs.max_segments }}] on ${{ inputs.target_branch }}
+name: SRAG-polar-iec61850
+run-name: SRAG iec61850 fuzzing [${{ inputs.run_segment }}/${{ inputs.max_segments }}] on ${{ inputs.target_branch }}
 
 on:
   workflow_dispatch:
@@ -36,7 +36,7 @@ permissions:
 
 env:
   # ===== 基本标识 =====
-  PROTOCOL_NAME: bacnet
+  PROTOCOL_NAME: iec61850
   TOOL_NAME: polar
 
   # ===== AFL系列工具路径 =====
@@ -49,27 +49,27 @@ env:
 
   # ===== 目标目录 / 目标可执行文件 / 字典 =====
   # 默认示例：bacnet + afl
-  TARGET_DIR: bacnet_polar
-  TARGET_BIN: udp_driver
-  DICT_FILE: bacnet.dict
+  TARGET_DIR: iec61850_polar
+  TARGET_BIN: iec61850
+  DICT_FILE: iec61850.dict
 
   # ===== 初始种子目录（相对仓库根目录） =====
-  SEED_DIR: SRAG/bacnet
+  SEED_DIR: SRAG/iec61850
 
   # ===== 输出 / 归档 =====
   OUTPUT_DIR: outputs
-  RESULTS_ARCHIVE: bacnet-findings.tar.gz
-  ARTIFACT_PREFIX: bacnet-findings
+  RESULTS_ARCHIVE: iec61850-findings.tar.gz
+  ARTIFACT_PREFIX: iec61850-findings
 
   # ===== 当前workflow文件名（供链式触发下一段） =====
-  SELF_WORKFLOW_FILE: SRAG_polar_bacnet.yml
+  SELF_WORKFLOW_FILE: SRAG_polar_iec61850.yml
 
   # ===== 运行时长（秒） =====
   FUZZ_SECONDS: "21300"
 
   # ===== 额外运行库；默认 bacnet + afl 不需要 =====
   # 例如 PolarAFL 可改成: libcjson1
-  EXTRA_APT_PACKAGES: ""
+  EXTRA_APT_PACKAGES: "libini-config-dev libseccomp-dev libcjson1"
 
 jobs:
   fuzzing:
@@ -88,7 +88,7 @@ jobs:
           set -e
           sudo apt-get update
 
-          packages=(libstdc++6 libgcc-s1 libcjson1)
+          packages=(libstdc++6 libgcc-s1)
 
           if [ -n "${EXTRA_APT_PACKAGES}" ]; then
             # shellcheck disable=SC2206
@@ -98,6 +98,11 @@ jobs:
 
           sudo apt-get install -y --no-install-recommends "${packages[@]}"
           sudo ldconfig
+
+          git clone https://github.com/zardus/preeny.git
+          cd preeny
+          make
+          ls -l x86_64-linux-gnu/
 
       - name: Restore AFL state from previous segment
         if: ${{ inputs.resume_run_id != '' && inputs.resume_artifact_name != '' }}
@@ -143,7 +148,7 @@ jobs:
           fi
 
           set +e
-          timeout "${FUZZ_SECONDS}" "../${FUZZER_DIR}/${FUZZER_BIN}" \
+          LD_PRELOAD="$PWD/x86_64-linux-gnu/desock.so" timeout "${FUZZ_SECONDS}" "../${FUZZER_DIR}/${FUZZER_BIN}" \
             "${input_args[@]}" \
             -o "${OUTPUT_DIR}" \
             -m none \
