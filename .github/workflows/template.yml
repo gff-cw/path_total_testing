@@ -1,5 +1,5 @@
-name: random-afl-bacnet
-run-name: random bacnet fuzzing [${{ inputs.run_segment }}/${{ inputs.max_segments }}] on ${{ inputs.target_branch }}
+name: TEMPLATE-afl-bacnet
+run-name: AFL bacnet fuzzing [${{ inputs.run_segment }}/${{ inputs.max_segments }}] on ${{ inputs.target_branch }}
 
 on:
   workflow_dispatch:
@@ -54,7 +54,7 @@ env:
   DICT_FILE: bacnet.dict
 
   # ===== 初始种子目录（相对仓库根目录） =====
-  SEED_DIR: random/bacnet
+  SEED_DIR: SRAG/bacnet
 
   # ===== 输出 / 归档 =====
   OUTPUT_DIR: outputs
@@ -62,7 +62,7 @@ env:
   ARTIFACT_PREFIX: bacnet-findings
 
   # ===== 当前workflow文件名（供链式触发下一段） =====
-  SELF_WORKFLOW_FILE: random_afl_bacnet.yml
+  SELF_WORKFLOW_FILE: TEMPLATE_afl_bacnet.yml
 
   # ===== 运行时长（秒） =====
   FUZZ_SECONDS: "21300"

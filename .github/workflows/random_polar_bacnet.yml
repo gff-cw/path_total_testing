@@ -1,4 +1,4 @@
-name: random-afl-bacnet
+name: random-polar-bacnet
 run-name: random bacnet fuzzing [${{ inputs.run_segment }}/${{ inputs.max_segments }}] on ${{ inputs.target_branch }}
 
 on:
@@ -37,19 +37,19 @@ permissions:
 env:
   # ===== 基本标识 =====
   PROTOCOL_NAME: bacnet
-  TOOL_NAME: afl
+  TOOL_NAME: polar
 
   # ===== AFL系列工具路径 =====
   # AFL      -> afl
   # AFLFast  -> aflfast
   # MOpt     -> mopt
   # PolarAFL -> polar
-  FUZZER_DIR: afl
+  FUZZER_DIR: polar
   FUZZER_BIN: afl-fuzz
 
   # ===== 目标目录 / 目标可执行文件 / 字典 =====
   # 默认示例：bacnet + afl
-  TARGET_DIR: bacnet_afl
+  TARGET_DIR: bacnet_polar
   TARGET_BIN: udp_driver
   DICT_FILE: bacnet.dict
 
@@ -62,7 +62,7 @@ env:
   ARTIFACT_PREFIX: bacnet-findings
 
   # ===== 当前workflow文件名（供链式触发下一段） =====
-  SELF_WORKFLOW_FILE: random_afl_bacnet.yml
+  SELF_WORKFLOW_FILE: random_polar_bacnet.yml
 
   # ===== 运行时长（秒） =====
   FUZZ_SECONDS: "21300"
@@ -148,6 +148,8 @@ jobs:
             -o "${OUTPUT_DIR}" \
             -m none \
             -x "${DICT_FILE}" \
+            -j json \
+            -P \
             -- "./${TARGET_BIN}" @@
           rc=$?
           set -e
