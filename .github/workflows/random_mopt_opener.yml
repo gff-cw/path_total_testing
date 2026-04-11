@@ -44,7 +44,7 @@ env:
   # AFLFast  -> aflfast
   # MOpt     -> mopt
   # PolarAFL -> polar
-  FUZZER_DIR: aflfast
+  FUZZER_DIR: mopt
   FUZZER_BIN: afl-fuzz
 
   # ===== 目标目录 / 目标可执行文件 / 字典 =====
