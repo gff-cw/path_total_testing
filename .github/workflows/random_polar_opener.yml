@@ -148,7 +148,7 @@ jobs:
             -o "${OUTPUT_DIR}" \
             -m none \
             -x "${DICT_FILE}" \
-            -j json \
+            -j "${DICT_FILE}json" \
             -P \
             -- "./${TARGET_BIN}" lo @@
           rc=$?
