@@ -149,7 +149,7 @@ jobs:
 
           set +e
             LD_PRELOAD="${GITHUB_WORKSPACE}/preeny/x86_64-linux-gnu/desock.so" timeout "${FUZZ_SECONDS}" "../${FUZZER_DIR}/${FUZZER_BIN}" \ 
-            "${input_args[@]}" \
+            -i "${input_args[@]}" \
             -o "${OUTPUT_DIR}" \
             -m none \
             -x "${DICT_FILE}" \
