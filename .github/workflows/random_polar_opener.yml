@@ -150,7 +150,7 @@ jobs:
             -x "${DICT_FILE}" \
             -j json \
             -P \
-            -- "./${TARGET_BIN}" lo @@
+            -- "./${TARGET_BIN}" lo
           rc=$?
           set -e
 
