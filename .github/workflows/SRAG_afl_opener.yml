@@ -148,7 +148,7 @@ jobs:
             -o "${OUTPUT_DIR}" \
             -m none \
             -x "${DICT_FILE}" \
-            -- "./${TARGET_BIN}" lo @@
+            -- "./${TARGET_BIN}" lo
           rc=$?
           set -e
 
