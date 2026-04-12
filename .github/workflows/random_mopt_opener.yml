@@ -54,7 +54,7 @@ env:
   DICT_FILE: opener.dict
 
   # ===== 初始种子目录（相对仓库根目录） =====
-  SEED_DIR: random/opener
+  SEED_DIR: SRAG/opener
 
   # ===== 输出 / 归档 =====
   OUTPUT_DIR: outputs
